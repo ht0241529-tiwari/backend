@@ -5,15 +5,26 @@
   "keywords": [
     "node"
   ],
+  "homepage": "https://github.com/ht0241529-tiwari/backend#readme",
+  "bugs": {
+    "url": "https://github.com/ht0241529-tiwari/backend/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ht0241529-tiwari/backend.git"
+  },
   "license": "ISC",
   "author": "harsh tiwari",
-  "type": "commonjs",
+  "type": "module",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "dev": "nodemon src/index.js"
   },
   "dependencies": {
     "dotenv": "^17.2.3",
     "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }
