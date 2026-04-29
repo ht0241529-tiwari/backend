@@ -6,7 +6,9 @@ const storage = multer.diskStorage({
   },
   filename: function (req, file, cb) {
     
-    cb(null, file.originalname)
+    cb(null, file.originalname)// null means no error, and file.originalname is the name of the file as
+    //  it was uploaded by the user. This will save the file with its original name in the specified 
+    // destination folder.
   }
 })
 

@@ -305,6 +305,7 @@ const updateUserAvatar=asyncHandler(async(req,res)=>{
   if(!avatarLocalPath){
     throw new ApiError(400,"avatar is required");
   }
+  //TODO delete old image from cloudinary using cloudinary public id before uploading new image and updating user document in db
   const avatar=await uploadOnCloudinary(avatarLocalPath);
 
 console.log("avatar upload response: ", avatar.url);
@@ -374,6 +375,139 @@ return res
 )
 })
 
+const getUserChannelProfile=asyncHandler(async(req,res)=>{
+
+  const {username}=req.params;
+
+  if(!username?.trim()){
+    throw new ApiError(400,"username is required");
+  }
+
+  const channel=await User.aggregate([
+    {
+      $match:{
+        username:username?.toLowerCase()
+      }
+    },
+    {
+        $lookup:{
+          from:"subscriptions",
+          localField:"_id",
+          foreignField:"channel",
+          as:"subscribers"
+        }
+      
+    },
+    {
+        $lookup:{
+          from:"subscriptions",
+          localField:"_id",
+          foreignField:"subscriber",
+          as:"subscribedTo"
+        }
+    },
+    {
+        $addFields:{
+          subscribersCount:{
+            $size:"$subscribers"
+          },
+          channelsSubscribedToCount:{
+            $size:"$subscribedTo"
+          },
+          isSubscribed: {
+            $cond:{
+              if:{$in:[req.user?._id,"$subscribers.subscriber"]},
+              then:true,
+              else:false
+    }
+          }
+        }
+    },
+    {
+         $project:{
+          fullName:1,
+          username:1,
+          email:1,
+          avatar:1,
+          coverImage:1,
+          subscribersCount:1,
+          channelsSubscribedToCount:1,
+          isSubscribed:1
+      }
+    }
+    
+  ])
+   console.log("channel profile data: ", channel);
+
+   if(!channel?.length){
+    throw new ApiError(404,"channel not found");
+   }
+//explanation in this link https://chatgpt.com/share/69eda83f-d998-8320-bedd-89ed163a373d
+   return 
+   res.status(200)
+   .json(
+    new ApiResponse(
+      200,
+      channel[0],
+      "channel profile fetched successfully"
+    )
+   )
+})
+
+const getWatchHistory=asyncHandler(async(req,res)=>{
+  // req.user._id from this we get string and then you give to mongoose and it will convert to object id
+  const user=await User.aggregate([
+    {
+      $match:{
+        _id:new mongoose.Types.ObjectId(req.user._id)
+      }
+    },
+    {
+      $lookup:{
+        from:"videos",
+        localField:"WatchHistory",
+        foreignField:"_id",
+        as:"watchHistory",
+        //you can see populated method aslo
+        pipeline:[
+          {
+            $lookup:{
+              from:"users",
+              localfield:"owner",
+              foreignField:"_id",
+              as:"owner",
+              pipeline:[//if ya pipeline bahar hota to ownerDetails me owner ka id aata but pipeline ke andar hone se owner details me owner ka pura document aa jayega
+                {
+                  $project:{
+                    fullName:1,
+                    username:1,
+                    avatar:1
+                  }
+                }
+              ]
+            }
+          },
+          {
+            $addFields:{//two way to take out data from array if you know there is only one element in ownerDetails array then you can use $arrayElemAt operator to take out that element from array and make it as object and then you can access the properties of that object directly but if you are not sure about number of elements in ownerDetails array then you can use $unwind stage to deconstruct the ownerDetails array and then you can access the properties of ownerDetails directly without using $arrayElemAt operator
+              owner:{
+                  $first:"$owner"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ])
+
+   return res.status(200)
+   .json(
+    new ApiResponse(
+      200,
+      user[0].watchHistory,
+      "watch history fetched successfully"
+    )
+   )
+})
 export { registerUser,
          loginUser,
          logoutUser,
@@ -382,5 +516,7 @@ export { registerUser,
          getCurrentUser,
          updateAccountDetails,
           updateUserAvatar,
-          updateUserCoverImage
+          updateUserCoverImage,
+          getUserChannelProfile,
+          getWatchHistory
    };
